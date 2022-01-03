@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="color-scheme" content="dark" />
+	<meta name="description" content="A minimalistic HTML, CSS and JavaScript editor" />
+
+	<link rel="icon" href="/circles/gold.svg" />
+
+	<title>Live HTML Editor</title>
+	<style></style>
+	<style>
+		body {
+			font: 1.5rem system-ui;
+			margin: 0;
+			tab-size: 3;
+		}
+
+		body>textarea {
+			font-size: inherit;
+			--margin: 1rem;
+			margin: var(--margin);
+			/* margin-block-end: 0; */
+			border: 2px solid;
+			border-radius: .8rem;
+			border-end-end-radius: 0;
+			/* width: 100%; */
+			inline-size: calc(100% - var(--margin) * 2);
+			block-size: auto;
+			display: block;
+			padding: .4em;
+			min-block-size: 4em;
+			max-block-size: 15em;
+			box-sizing: border-box;
+			resize: vertical;
+			background-color: transparent;
+			outline: none;
+		}
+
+		textarea:focus {
+			background-color: #8881;
+		}
+
+		body>textarea.html {
+			border-color: orangeRed;
+		}
+
+		body>textarea.css {
+			border-color: dodgerBlue;
+		}
+
+		body>textarea.js {
+			border-color: gold;
+		}
+
+		body>textarea::placeholder {
+			color: #888f;
+			font-weight: bold;
+		}
+
+		body>textarea.js::before {
+			content: "asdf";
+			z-index: 1;
+			position: absolute;
+			color: #fff;
+		}
+
+		body>main {
+			padding: 1rem;
+		}
+
+		body>main:empty::before {
+			content: "This is the <main> element.";
+			color: #888f;
+			border: 2px solid #888c;
+			border-radius: .8rem;
+			padding: .5rem .8rem;
+		}
+
+		body>result {
+			margin-inline: 1.5rem;
+			/* block-size: fit-content; */
+			/* block-size: 0; */
+			/* overflow: hidden; */
+			font-family: monospace;
+			white-space: pre;
+			color: paleGreen;
+		}
+
+		body>result.error {
+			color: red;
+		}
+
+		body>result.object {
+			color: mediumTurquoise;
+		}
+
+		body>result.number {
+			color: lightGreen;
+		}
+
+		body>result.string {
+			color: goldenRod;
+		}
+
+		body>result.function {
+			color: skyBlue;
+		}
+
+		body>result.boolean {
+			color: mediumPurple;
+		}
+
+		body>hr {
+			width: 100%;
+			border: none;
+			block-size: 3px;
+			background-color: #8888;
+		}
+
+	</style>
+</head>
+
+<body>
+	<textarea class="html" placeholder="type HTML"></textarea>
+	<textarea class="css" placeholder="type CSS"></textarea>
+	<textarea class="js" placeholder="type JavaScript"></textarea>
+	<result></result>
+	<hr />
+	<main></main>
+	<script>
+		{
+			// PWA stuff:
+
+			navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
+
+			{
+				let el = document.createElement("link");
+				el.rel = "manifest";
+				el.href = URL.createObjectURL(new Blob([JSON.stringify({
+					name: document.title,
+					start_url: location.origin + location.pathname,
+					display: "standalone",
+					icons: [
+						{
+							src: location.origin + "/media/white-black-circle.png",
+							sizes: "512x512",
+						},
+					],
+				})], { type: "application/manifest+json; charset=utf-8" }));
+				document.head.appendChild(el);
+			}
+		}
+
+		document.querySelectorAll("textarea").forEach((textarea) => textarea.addEventListener("input", (evt) => {
+			evt.target.style.height = 'auto';
+			evt.target.style.height = `${textarea.scrollHeight + 2}px`;
+		}));
+
+		document.querySelector("textarea.html").addEventListener("input", (evt) => {
+			const textarea = evt.target;
+			const value = textarea.value;
+			const cursorPos = textarea.selectionEnd;
+
+			if (evt.data === ">") {
+				const tagName = evt.target.value.slice(0, cursorPos).match(/\<(?<tagName>(\w+))[^\>]*\>$/)?.groups?.tagName;
+				if (tagName) {
+					textarea.value = [
+						value.slice(0, cursorPos),
+						`</${tagName}>`,
+						value.slice(cursorPos),
+					].join("");
+					textarea.selectionStart = textarea.selectionEnd = cursorPos;
+				}
+			}
+			document.querySelector("main").innerHTML = textarea.value;
+		});
+
+		document.querySelector("textarea.css").addEventListener("input", (evt) => {
+			const textarea = evt.target;
+			const value = textarea.value;
+			const cursorPos = textarea.selectionEnd;
+			if (evt.data === "{") {
+				textarea.value = [
+					value.slice(0, cursorPos),
+					"}",
+					value.slice(cursorPos),
+				].join("");
+				textarea.selectionStart = textarea.selectionEnd = cursorPos;
+			}
+			document.querySelector("style").textContent = evt.target.value;
+		});
+
+		document.querySelector("textarea.js").addEventListener("input", (evt) => {
+			const textarea = evt.target;
+			const value = textarea.value;
+			const resultEl = document.querySelector("result");
+			const bracketPairs = {
+				"(": ")",
+				"[": "]",
+				"{": "}",
+				'"': '"',
+				"'": "'",
+				"`": "`",
+			};
+			if (Object.keys(bracketPairs).includes(evt.data)) {
+				const cursorPos = textarea.selectionEnd;
+				textarea.value = [
+					value.slice(0, cursorPos),
+					bracketPairs[evt.data],
+					value.slice(cursorPos),
+				].join("");
+				textarea.selectionStart = textarea.selectionEnd = cursorPos;
+			}
+
+			const [result, success] = (() => {
+				try {
+					console.clear();
+					return [globalThis.eval(textarea.value), true];
+				} catch (err) {
+					return [err, false];
+				}
+			})();
+
+			if (success) {
+				resultEl.textContent = (() => {
+					switch (typeof result) {
+						case "object": return JSON.stringify(result, null, "\t");
+						default: return result?.toString();
+					}
+				})();
+				resultEl.className = (typeof result);
+			} else {
+				resultEl.textContent = result.toString();
+				resultEl.classList = "error";
+			}
+		});
+	</script>
+</body>
+
+</html>
