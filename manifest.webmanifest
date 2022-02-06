@@ -1,0 +1,26 @@
+{
+	"name": "Live HTML Editor",
+	"short_name": "HTML Editor",
+	"description": "A minimalistic HTML, CSS and JavaScript editor",
+	"start_url": "./",
+	"scope": "./",
+	"display": "standalone",
+	"background_color": "black",
+	"theme_color": "black",
+	"display_override": [],
+	"icons": [
+		{
+			"src": "./icon.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable any"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "./icon.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}
